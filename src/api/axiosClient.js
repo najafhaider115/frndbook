@@ -5,9 +5,10 @@ import { tokenStorage } from "../utils/tokenStorage";
 const axiosClient = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL,
 
-  headers: {
-    "Content-Type": "application/json",
-  },
+  // ISSUE FIX:
+  // Do not set Content-Type globally.
+  // Profile image uploads use FormData and must be sent as
+  // multipart/form-data with the boundary generated automatically.
 });
 
 // ==================================================
@@ -112,10 +113,19 @@ axiosClient.interceptors.response.use(
 
     const requestUrl = originalRequest?.url || "";
 
+    /*
+     * ISSUE FIX:
+     * All public authentication endpoints must bypass
+     * the access-token refresh flow.
+     */
     if (
       requestUrl.includes("/api/auth/login") ||
       requestUrl.includes("/api/auth/signup") ||
-      requestUrl.includes("/api/auth/refresh")
+      requestUrl.includes("/api/auth/verify-email") ||
+      requestUrl.includes("/api/auth/resend-verification") ||
+      requestUrl.includes("/api/auth/refresh") ||
+      requestUrl.includes("/api/auth/forgot-password") ||
+      requestUrl.includes("/api/auth/reset-password")
     ) {
       return Promise.reject(error);
     }

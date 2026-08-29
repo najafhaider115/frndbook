@@ -24,11 +24,13 @@ const Signup = () => {
     try {
       await signup(name, email, password);
 
-      navigate("/login");
+      navigate(`/verify-email?email=${encodeURIComponent(email)}`);
     } catch (error) {
       console.error(error);
 
-      setError(error.response?.data?.message || "Signup failed");
+      setError(
+        error.response?.data?.message || "Unable to send verification code",
+      );
     } finally {
       setLoading(false);
     }
@@ -63,13 +65,14 @@ const Signup = () => {
             placeholder="Password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
+            minLength={8}
             required
           />
 
           {error && <p className="error">{error}</p>}
 
           <button type="submit" disabled={loading}>
-            {loading ? "Creating..." : "Signup"}
+            {loading ? "Sending code..." : "Create Account"}
           </button>
         </form>
 

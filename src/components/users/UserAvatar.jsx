@@ -5,9 +5,11 @@ const UserAvatar = ({ name, image, userId, size = "medium" }) => {
 
   const [imageError, setImageError] = useState(false);
 
+  // CHANGE: Add the profileImage value as a cache-busting version.
+  // This forces the browser to request the new image when the image changes.
   const imageUrl =
     image && userId
-      ? `${import.meta.env.VITE_API_BASE_URL}/api/users/${userId}/profile-image`
+      ? `${import.meta.env.VITE_API_BASE_URL}/api/users/${userId}/profile-image?v=${encodeURIComponent(image)}`
       : null;
 
   useEffect(() => {

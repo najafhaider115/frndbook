@@ -45,11 +45,6 @@ export const updateProfileImage = async (file) => {
   const response = await axiosClient.post(
     "/api/users/me/profile-image",
     formData,
-    {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    },
   );
 
   return response.data;
