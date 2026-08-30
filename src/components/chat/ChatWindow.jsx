@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 
 import UserAvatar from "../users/UserAvatar";
 
@@ -283,12 +284,18 @@ const ChatWindow = ({
           ←
         </button>
 
-        <UserAvatar
-          name={otherUser?.name}
-          image={otherUser?.profileImage}
-          userId={otherUser?.id}
-          size="medium"
-        />
+        <Link
+          to={`/users/${otherUser?.id}`}
+          className="chat-header-avatar-link"
+          aria-label={`View ${otherUser?.name || "user"} profile`}
+        >
+          <UserAvatar
+            name={otherUser?.name}
+            image={otherUser?.profileImage}
+            userId={otherUser?.id}
+            size="medium"
+          />
+        </Link>
 
         <div className="chat-header-info">
           <h2>{otherUser?.name || "Unknown User"}</h2>

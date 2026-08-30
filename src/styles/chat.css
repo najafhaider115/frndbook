@@ -229,6 +229,19 @@
   white-space: nowrap;
 }
 
+.chat-header-avatar-link {
+  display: flex;
+  flex-shrink: 0;
+
+  border-radius: 50%;
+  text-decoration: none;
+}
+
+.chat-header-avatar-link:focus-visible {
+  outline: 2px solid #555555;
+  outline-offset: 2px;
+}
+
 .chat-connection-status {
   color: #888888;
 
