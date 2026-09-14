@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useSearchParams } from "react-router-dom";
 
@@ -9,10 +9,15 @@ import ChatWindow from "../components/chat/ChatWindow";
 
 import {
   getConversations,
+  getConversation,
   getOrCreateConversation,
 } from "../api/conversationApi";
 
 import { useAuth } from "../auth/AuthContext";
+
+import { createConversationUpdateWebSocket } from "../services/conversationUpdateWebSocketService";
+import { subscribeConversationSidebar } from "../services/conversationSidebarSubscription";
+import { applyConversationUpdate, mergeConversation, mergeConversationLists } from "../utils/conversationUpdates";
 
 import "../styles/chat.css";
 
@@ -28,6 +33,10 @@ const Messages = () => {
   const [loading, setLoading] = useState(true);
 
   const [error, setError] = useState("");
+  const conversationsRef = useRef(conversations);
+  useEffect(() => {
+    conversationsRef.current = conversations;
+  }, [conversations]);
 
   /*
    * Desktop always shows both panels.
@@ -48,7 +57,7 @@ const Messages = () => {
 
       const data = await getConversations();
 
-      setConversations(data || []);
+      setConversations((current) => mergeConversationLists(current, data || []));
 
       return data || [];
     } catch (error) {
@@ -80,7 +89,7 @@ const Messages = () => {
 
       if (!requestedUserId) {
         if (data.length > 0) {
-          setSelectedConversation(data[0]);
+          setSelectedConversation((current) => current || data[0]);
         }
 
         return;
@@ -166,54 +175,50 @@ const Messages = () => {
   // HANDLE REALTIME MESSAGE
   // ==================================================
 
-  const handleMessageReceived = useCallback((message) => {
-    if (!message?.conversationId) {
-      return;
-    }
-
-    setConversations((currentConversations) => {
-      const updated = currentConversations.map((conversation) => {
-        if (String(conversation.id) !== String(message.conversationId)) {
-          return conversation;
-        }
-
-        return {
-          ...conversation,
-          lastMessage: message,
-          updatedAt: message.createdAt || conversation.updatedAt,
-        };
-      });
-
-      updated.sort((first, second) => {
-        const firstTime = first.updatedAt
-          ? new Date(first.updatedAt).getTime()
-          : 0;
-
-        const secondTime = second.updatedAt
-          ? new Date(second.updatedAt).getTime()
-          : 0;
-
-        return secondTime - firstTime;
-      });
-
-      return updated;
-    });
-
-    setSelectedConversation((currentConversation) => {
-      if (
-        !currentConversation ||
-        String(currentConversation.id) !== String(message.conversationId)
-      ) {
-        return currentConversation;
-      }
-
-      return {
-        ...currentConversation,
-        lastMessage: message,
-        updatedAt: message.createdAt || currentConversation.updatedAt,
-      };
-    });
+  const handleConversationUpdate = useCallback((update) => {
+    if (update?.conversationId == null || !update.lastMessage) return;
+    setConversations((current) => applyConversationUpdate(current, update));
+    setSelectedConversation((current) =>
+      current && String(current.id) === String(update.conversationId)
+        ? mergeConversation(current, {
+            ...current,
+            lastMessage: update.lastMessage,
+            updatedAt: update.updatedAt || update.lastMessage.createdAt,
+          })
+        : current,
+    );
   }, []);
+
+  const handleMessageReceived = useCallback((message) => {
+    if (message?.conversationId == null) return;
+    handleConversationUpdate({
+      conversationId: message.conversationId,
+      lastMessage: message,
+      updatedAt: message.createdAt,
+    });
+  }, [handleConversationUpdate]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    return subscribeConversationSidebar({
+      createSocket: createConversationUpdateWebSocket,
+      loadList: getConversations,
+      loadConversation: getConversation,
+      hasConversation: (id) =>
+        conversationsRef.current.some((row) => String(row.id) === id),
+      onUpdate: handleConversationUpdate,
+      onRows: (rows) => {
+        setConversations((current) => mergeConversationLists(current, rows));
+        setSelectedConversation((current) => {
+          const incoming = rows.find((row) => String(row.id) === String(current?.id));
+          return current && incoming ? mergeConversation(current, incoming) : current;
+        });
+      },
+      onError: (error) => {
+        console.error("Conversation sidebar update failed:", error);
+      },
+    });
+  }, [user?.id, handleConversationUpdate]);
 
   // ==================================================
   // LOADING
