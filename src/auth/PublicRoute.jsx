@@ -3,10 +3,15 @@ import { Navigate } from "react-router-dom";
 import { useAuth } from "./AuthContext";
 
 const PublicRoute = ({ children }) => {
-  const { user, loading } = useAuth();
+  const { user, loading, authError, retryAuth } = useAuth();
 
   if (loading) {
-    return <div className="loading-screen">Loading...</div>;
+    return <div role="status" className="loading-screen">Loading...</div>;
+  }
+
+  if (authError) {
+    return <main className="loading-screen"><p role="alert">{authError}</p>
+      <button type="button" onClick={retryAuth}>Retry session check</button></main>;
   }
 
   /*

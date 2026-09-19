@@ -1,3 +1,4 @@
+import { apiErrorMessage } from "../utils/apiError.js";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 
 import { useAuth } from "../auth/AuthContext";
@@ -13,7 +14,7 @@ import { createNotificationWebSocket } from "../services/webSocketService";
 
 const NotificationContext = createContext(null);
 
-export const NotificationProvider = ({ children }) => {
+const NotificationState = ({ children }) => {
   const { user } = useAuth();
 
   const [notifications, setNotifications] = useState([]);
@@ -218,7 +219,7 @@ export const NotificationProvider = ({ children }) => {
     } catch (error) {
       console.error("Failed to load notifications:", error);
 
-      setError(error.response?.data?.message || "Unable to load notifications");
+      setError(apiErrorMessage(error, "Unable to load notifications"));
 
       throw error;
     } finally {
@@ -334,6 +335,12 @@ export const NotificationProvider = ({ children }) => {
 // ==================================================
 // HOOK
 // ==================================================
+
+// Account changes dispose all notification requests/state with their provider lifetime.
+export const NotificationProvider = ({ children }) => {
+  const { user, sessionKey } = useAuth();
+  return <NotificationState key={`${sessionKey}:${user?.id}`}>{children}</NotificationState>;
+};
 
 export const useNotifications = () => {
   const context = useContext(NotificationContext);

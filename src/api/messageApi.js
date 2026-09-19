@@ -4,10 +4,11 @@ import axiosClient from "./axiosClient";
 // GET MESSAGE HISTORY
 // ==================================================
 
-export const getMessages = async (conversationId, page = 0, size = 20) => {
+export const getMessages = async (conversationId, page = 0, size = 20, signal) => {
   const response = await axiosClient.get(
     `/api/conversations/${conversationId}/messages`,
     {
+      signal,
       params: {
         page,
         size,

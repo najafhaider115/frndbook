@@ -15,48 +15,31 @@ const axiosClient = axios.create({
 // REFRESH STATE
 // ==================================================
 
-let refreshPromise = null;
+let refreshFlight = null;
 
-// ==================================================
-// REFRESH ACCESS TOKEN
-// ==================================================
-
-export const refreshAccessToken = async () => {
-  /*
-   * If another refresh is already running,
-   * everyone waits for that same request.
-   */
-  if (refreshPromise) {
-    return refreshPromise;
-  }
-
+export const refreshAccessToken = () => {
   const refreshToken = tokenStorage.getRefreshToken();
-
-  if (!refreshToken) {
-    throw new Error("Refresh token is not available");
-  }
-
-  refreshPromise = axios
-    .post(`${import.meta.env.VITE_API_BASE_URL}/api/auth/refresh`, {
-      refreshToken,
-    })
-    .then((response) => {
+  const session = tokenStorage.getSessionId();
+  if (!refreshToken) return Promise.reject(new Error("Refresh token is not available"));
+  if (refreshFlight?.token === refreshToken && refreshFlight.session === session) return refreshFlight.promise;
+  const flight = { token: refreshToken, session };
+  const stillCurrent = () => tokenStorage.getRefreshToken() === refreshToken && tokenStorage.getSessionId() === session;
+  flight.promise = axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/auth/refresh`, { refreshToken })
+    .then(response => {
+      if (!stillCurrent()) throw new Error("Authentication changed while refreshing");
       const { accessToken, refreshToken: newRefreshToken } = response.data;
-
+      if (!accessToken) throw new Error("Invalid refresh response");
       tokenStorage.updateTokens(accessToken, newRefreshToken);
-
       return accessToken;
     })
-    .catch((error) => {
-      tokenStorage.clear();
-
+    .catch(error => {
+      // A temporary outage is not evidence that a session has been revoked.
+      if (stillCurrent() && [401, 403].includes(error.response?.status)) tokenStorage.clear();
       throw error;
     })
-    .finally(() => {
-      refreshPromise = null;
-    });
-
-  return refreshPromise;
+    .finally(() => { if (refreshFlight === flight) refreshFlight = null; });
+  refreshFlight = flight;
+  return flight.promise;
 };
 
 // ==================================================
@@ -65,6 +48,12 @@ export const refreshAccessToken = async () => {
 
 axiosClient.interceptors.request.use(
   (config) => {
+    const session = tokenStorage.getSessionId();
+    if (config._sessionCaptured && config._authSession !== session) {
+      return Promise.reject(new axios.CanceledError("Session changed"));
+    }
+    config._sessionCaptured = true;
+    config._authSession = session;
     const accessToken = tokenStorage.getAccessToken();
 
     if (accessToken) {
@@ -85,11 +74,13 @@ axiosClient.interceptors.request.use(
 
 axiosClient.interceptors.response.use(
   (response) => {
+    if (response.config._authSession !== tokenStorage.getSessionId()) throw new axios.CanceledError("Session changed");
     return response;
   },
 
   async (error) => {
     const originalRequest = error.config;
+    if (!originalRequest || (originalRequest._sessionCaptured && originalRequest._authSession !== tokenStorage.getSessionId())) return Promise.reject(error);
 
     // ------------------------------------------
     // Only handle 401
@@ -149,7 +140,7 @@ axiosClient.interceptors.response.use(
        * cleared authentication.
        */
 
-      window.location.href = "/login";
+      // AuthContext reacts to auth-cleared; transient failures stay retryable.
 
       return Promise.reject(refreshError);
     }

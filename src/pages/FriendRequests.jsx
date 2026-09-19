@@ -1,3 +1,9 @@
+import { apiErrorMessage } from "../utils/apiError.js";
+import friendsStyles from "../styles/friends.module.css";
+import { bindStyles } from "../utils/bindStyles";
+import StatusMessage from "../components/ui/StatusMessage";
+import PageContainer from "../components/ui/PageContainer";
+import Card from "../components/ui/Card";
 import { useEffect, useState } from "react";
 
 import Navbar from "../components/layout/Navbar";
@@ -10,6 +16,8 @@ import {
   acceptFriendRequest,
   rejectFriendRequest,
 } from "../api/friendApi";
+
+const css = bindStyles(friendsStyles);
 
 const FriendRequests = () => {
   const [receivedRequests, setReceivedRequests] = useState([]);
@@ -42,7 +50,7 @@ const FriendRequests = () => {
       console.error("Failed to load friend requests:", error);
 
       setError(
-        error.response?.data?.message || "Unable to load friend requests",
+        apiErrorMessage(error, "Unable to load friend requests"),
       );
     } finally {
       setLoading(false);
@@ -71,7 +79,7 @@ const FriendRequests = () => {
       console.error("Failed to accept friend request:", error);
 
       setError(
-        error.response?.data?.message || "Unable to accept friend request",
+        apiErrorMessage(error, "Unable to accept friend request"),
       );
     } finally {
       setActionRequestId(null);
@@ -96,7 +104,7 @@ const FriendRequests = () => {
       console.error("Failed to reject friend request:", error);
 
       setError(
-        error.response?.data?.message || "Unable to reject friend request",
+        apiErrorMessage(error, "Unable to reject friend request"),
       );
     } finally {
       setActionRequestId(null);
@@ -112,7 +120,7 @@ const FriendRequests = () => {
       <>
         <Navbar />
 
-        <div className="loading-screen">Loading friend requests...</div>
+        <div id="main-content" tabIndex={-1} role="status" className={css("loading-screen")}>Loading friend requests...</div>
       </>
     );
   }
@@ -125,9 +133,9 @@ const FriendRequests = () => {
     <>
       <Navbar />
 
-      <main className="friend-requests-page">
-        <div className="friend-requests-card">
-          <div className="friends-header">
+      <PageContainer className={css("friend-requests-page")}>
+        <Card className={css("friend-requests-card")}>
+          <div className={css("friends-header")}>
             <div>
               <h1>Friend Requests</h1>
 
@@ -135,23 +143,23 @@ const FriendRequests = () => {
             </div>
           </div>
 
-          {error && <p className="error">{error}</p>}
+          {error && <StatusMessage tone="error" className={css("error")}>{error}</StatusMessage>}
 
           {/* ========================================
               RECEIVED
               ======================================== */}
 
-          <section className="request-section">
-            <div className="request-section-header">
+          <section className={css("request-section")}>
+            <div className={css("request-section-header")}>
               <h2>Received</h2>
 
               <span>{receivedRequests.length}</span>
             </div>
 
             {receivedRequests.length === 0 ? (
-              <p className="request-empty">No pending friend requests.</p>
+              <p className={css("request-empty")}>No pending friend requests.</p>
             ) : (
-              <div className="friend-request-list">
+              <div className={css("friend-request-list")}>
                 {receivedRequests.map((request) => (
                   <FriendRequestCard
                     key={request.id}
@@ -170,17 +178,17 @@ const FriendRequests = () => {
               SENT
               ======================================== */}
 
-          <section className="request-section">
-            <div className="request-section-header">
+          <section className={css("request-section")}>
+            <div className={css("request-section-header")}>
               <h2>Sent</h2>
 
               <span>{sentRequests.length}</span>
             </div>
 
             {sentRequests.length === 0 ? (
-              <p className="request-empty">No pending sent requests.</p>
+              <p className={css("request-empty")}>No pending sent requests.</p>
             ) : (
-              <div className="friend-request-list">
+              <div className={css("friend-request-list")}>
                 {sentRequests.map((request) => (
                   <FriendRequestCard
                     key={request.id}
@@ -191,8 +199,8 @@ const FriendRequests = () => {
               </div>
             )}
           </section>
-        </div>
-      </main>
+        </Card>
+      </PageContainer>
     </>
   );
 };

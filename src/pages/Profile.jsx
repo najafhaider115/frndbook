@@ -1,3 +1,12 @@
+import { formatTimestamp } from "../utils/displayText.js";
+import { apiError } from "../utils/apiError";
+import { apiErrorMessage } from "../utils/apiError.js";
+import profileStyles from "../styles/profile.module.css";
+import { bindStyles } from "../utils/bindStyles";
+import StatusMessage from "../components/ui/StatusMessage";
+import FormField from "../components/ui/FormField";
+import PageContainer from "../components/ui/PageContainer";
+import Card from "../components/ui/Card";
 import { useEffect, useRef, useState } from "react";
 
 import Navbar from "../components/layout/Navbar";
@@ -8,40 +17,33 @@ import { updateProfile, updateProfileImage } from "../api/userApi";
 
 import { useAuth } from "../auth/AuthContext";
 
-const Profile = () => {
-  const { user, loading: authLoading } = useAuth();
+const css = bindStyles(profileStyles);
 
-  const [profile, setProfile] = useState(user);
+const ProfileForm = () => {
+  const { user, loading: authLoading, updateUser, sessionKey } = useAuth();
+  const profile = user;
+  const busy = useRef(false);
+  const mounted = useRef(false);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
 
-  const [name, setName] = useState(user?.name || "");
+  const [nameDraft, setName] = useState(null);
+  const name = nameDraft ?? user?.name ?? "";
 
-  const [bio, setBio] = useState(user?.bio || "");
+  const [bioDraft, setBio] = useState(null);
+  const bio = bioDraft ?? user?.bio ?? "";
 
   const [loading, setLoading] = useState(false);
 
   const [imageLoading, setImageLoading] = useState(false);
 
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
 
   const [success, setSuccess] = useState("");
 
   const [previewImage, setPreviewImage] = useState(null);
 
   const fileInputRef = useRef(null);
-
-  // ==================================================
-  // SYNC USER
-  // ==================================================
-
-  useEffect(() => {
-    if (!user) {
-      return;
-    }
-
-    setProfile(user);
-    setName(user.name || "");
-    setBio(user.bio || "");
-  }, [user]);
 
   // ==================================================
   // CLEANUP PREVIEW
@@ -61,25 +63,31 @@ const Profile = () => {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    if (busy.current) return;
+    busy.current = true;
 
     setError("");
+    setFieldErrors({});
     setSuccess("");
     setLoading(true);
 
     try {
       const updatedUser = await updateProfile(name.trim(), bio.trim());
 
-      setProfile(updatedUser);
-      setName(updatedUser.name || "");
-      setBio(updatedUser.bio || "");
+      if (!mounted.current || !updateUser(updatedUser, sessionKey)) return;
+      setName(null);
+      setBio(null);
 
       setSuccess("Profile updated successfully.");
     } catch (error) {
+      if (!mounted.current) return;
+      setFieldErrors(apiError(error).fieldErrors);
       console.error("Profile update failed:", error);
 
-      setError(error.response?.data?.message || "Failed to update profile");
+      setError(apiErrorMessage(error, "Failed to update profile"));
     } finally {
-      setLoading(false);
+      busy.current = false;
+      if (mounted.current) setLoading(false);
     }
   };
 
@@ -88,18 +96,20 @@ const Profile = () => {
   // ==================================================
 
   const handleImageChange = (event) => {
+    if (busy.current) return;
     const file = event.target.files?.[0];
 
     if (!file) {
       return;
     }
 
-    if (!file.type.startsWith("image/")) {
-      setError("Please select an image file.");
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      setError("Please select a JPEG, PNG or WebP image.");
       return;
     }
 
     setError("");
+    setFieldErrors({});
     setSuccess("");
 
     if (previewImage) {
@@ -110,7 +120,7 @@ const Profile = () => {
 
     setPreviewImage(previewUrl);
 
-    handleImageUpload(file);
+    void handleImageUpload(file);
   };
 
   // ==================================================
@@ -118,23 +128,24 @@ const Profile = () => {
   // ==================================================
 
   const handleImageUpload = async (file) => {
+    busy.current = true;
     setImageLoading(true);
 
     setError("");
+    setFieldErrors({});
     setSuccess("");
 
     try {
       const updatedUser = await updateProfileImage(file);
 
-      setProfile(updatedUser);
+      if (!mounted.current || !updateUser(updatedUser, sessionKey)) return;
 
       setSuccess("Profile image updated successfully.");
 
-      /*
-       * Keep the local preview visible until
-       * the profile page is refreshed.
-       */
+      setPreviewImage(null);
     } catch (error) {
+      if (!mounted.current) return;
+      setFieldErrors(apiError(error).fieldErrors);
       console.error("Profile image upload failed:", error);
 
       if (previewImage) {
@@ -144,10 +155,11 @@ const Profile = () => {
       setPreviewImage(null);
 
       setError(
-        error.response?.data?.message || "Failed to upload profile image",
+        apiErrorMessage(error, "Failed to upload profile image"),
       );
     } finally {
-      setImageLoading(false);
+      busy.current = false;
+      if (mounted.current) setImageLoading(false);
 
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
@@ -160,26 +172,26 @@ const Profile = () => {
   // ==================================================
 
   if (authLoading) {
-    return <div className="loading-screen">Loading...</div>;
+    return <div id="main-content" tabIndex={-1} role="status" className={css("loading-screen")}>Loading...</div>;
   }
 
   if (!profile) {
-    return <div className="loading-screen">Unable to load profile.</div>;
+    return <div id="main-content" tabIndex={-1} role="status" className={css("loading-screen")}>Unable to load profile.</div>;
   }
 
   return (
     <>
       <Navbar />
 
-      <main className="profile-page">
-        <div className="profile-card">
+      <PageContainer className={css("profile-page")}>
+        <Card className={css("profile-card")}>
           <h1>My Profile</h1>
 
-          {error && <p className="error">{error}</p>}
+          {error && <StatusMessage tone="error" className={css("error")}>{error}</StatusMessage>}
 
-          {success && <p className="success">{success}</p>}
+          {success && <StatusMessage tone="success" className={css("success")}>{success}</StatusMessage>}
 
-          <div className="profile-image-section">
+          <div className={css("profile-image-section")}>
             <UserAvatar
               name={profile.name}
               image={previewImage || profile.profileImage}
@@ -190,7 +202,7 @@ const Profile = () => {
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              disabled={imageLoading}
+              disabled={imageLoading || loading}
             >
               {imageLoading ? "Uploading..." : "Change Photo"}
             </button>
@@ -198,44 +210,41 @@ const Profile = () => {
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/*"
+              accept="image/jpeg,image/png,image/webp"
               onChange={handleImageChange}
               hidden
             />
           </div>
 
-          <form className="profile-form" onSubmit={handleSubmit}>
-            <label>Name</label>
+          <form className={css("profile-form")} onSubmit={handleSubmit}>
 
-            <input
+            <FormField label="Name" error={fieldErrors.name} autoComplete="name"
               type="text"
+              disabled={loading || imageLoading}
               value={name}
               maxLength={100}
               onChange={(event) => setName(event.target.value)}
               required
             />
 
-            <label>Email</label>
+            <FormField label="Email" type="email" autoComplete="email" value={profile.email} disabled />
 
-            <input type="email" value={profile.email} disabled />
-
-            <label>Bio</label>
-
-            <textarea
+            <FormField as="textarea" label="Bio" error={fieldErrors.bio}
+              disabled={loading || imageLoading}
               value={bio}
               maxLength={500}
               rows={5}
               onChange={(event) => setBio(event.target.value)}
             />
 
-            <div className="character-count">{bio.length}/500</div>
+            <div className={css("character-count")}>{bio.length}/500</div>
 
-            <button type="submit" disabled={loading}>
+            <button type="submit" disabled={loading || imageLoading}>
               {loading ? "Saving..." : "Save Changes"}
             </button>
           </form>
 
-          <div className="profile-details">
+          <div className={css("profile-details")}>
             <p>
               <strong>Status:</strong> {profile.status || "—"}
             </p>
@@ -243,14 +252,17 @@ const Profile = () => {
             <p>
               <strong>Last seen:</strong>{" "}
               {profile.lastSeen
-                ? new Date(profile.lastSeen).toLocaleString()
+                ? formatTimestamp(profile.lastSeen)
                 : "—"}
             </p>
           </div>
-        </div>
-      </main>
+        </Card>
+      </PageContainer>
     </>
   );
 };
 
-export default Profile;
+export default function Profile() {
+  const { user, sessionKey } = useAuth();
+  return <ProfileForm key={`${sessionKey}:${user?.id}`} />;
+}

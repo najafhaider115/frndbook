@@ -1,0 +1,162 @@
+
+
+.user-search {
+  background: var(--color-surface);
+  padding: 25px;
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-card);
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+.section-header h2, .section-header h3 {
+  margin: 0;
+}
+
+.search-input {
+  min-height: 44px;
+  padding: 11px 14px;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.search-input:focus {
+  border-color: var(--color-outline);
+}
+
+.search-status {
+  color: var(--color-text-secondary);
+}
+
+.user-results {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.user-card {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  cursor: pointer;
+  text-decoration: none;
+  color: inherit;
+  transition: background var(--transition-fast), transform var(--transition-fast);
+}
+
+.user-card-info {
+  min-width: 0;
+}
+
+.user-card-info h3 {
+  margin: 0 0 5px;
+  font-size: 16px;
+}
+
+.user-card-info p {
+  margin: 0;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.user-avatar {
+  flex-shrink: 0;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.user-avatar-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #dddddd;
+  color: var(--color-text-strong);
+  font-weight: 700;
+}
+
+.user-avatar.small {
+  width: 36px;
+  height: 36px;
+  font-size: 14px;
+}
+
+.user-avatar.medium {
+  width: 48px;
+  height: 48px;
+  font-size: 18px;
+}
+
+.user-avatar.large {
+  width: 120px;
+  height: 120px;
+  font-size: 42px;
+}
+
+.recent-searches {
+  margin-top: 30px;
+}
+
+.text-button {
+  border: none;
+  background: transparent;
+  color: #444444;
+  text-decoration: underline;
+  padding: 6px 8px;
+}
+
+.pagination {
+  margin-top: 20px;
+}
+
+@media (max-width: 700px) {
+
+
+  .user-search {
+    padding: 20px;
+    border-radius: var(--radius-lg);
+  }
+
+  .section-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .pagination {
+    gap: 12px;
+  }
+
+  .pagination button {
+    min-width: 90px;
+  }
+}
+
+@media (max-width: 380px) {
+  .user-search {
+    padding: 16px;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .user-card:hover {
+    background: #f8f8f8;
+    transform: translateY(-1px);
+  }
+}
+
+.user-card:focus-visible {
+  outline-offset: 3px;
+}

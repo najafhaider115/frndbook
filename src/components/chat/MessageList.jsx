@@ -1,12 +1,19 @@
+import { formatTimestamp } from "../../utils/displayText.js";
+import chatStyles from "../../styles/chat.module.css";
+import { bindStyles } from "../../utils/bindStyles";
 import { useEffect, useLayoutEffect, useRef } from "react";
 
 import UserAvatar from "../users/UserAvatar";
+
+const css = bindStyles(chatStyles);
 
 const MessageList = ({
   messages,
   currentUserId,
   loading,
   loadingOlder,
+  syncing = false,
+  historyError = "",
   hasOlderMessages,
   onLoadOlder,
 }) => {
@@ -87,6 +94,7 @@ const MessageList = ({
      * Keep the same message in approximately the same
      * visual position instead of jumping to the bottom.
      */
+    if (loadingOlder && preserveScrollRef.current) return;
     if (!loadingOlder && preserveScrollRef.current) {
       const previousScroll = preserveScrollRef.current;
 
@@ -157,8 +165,8 @@ const MessageList = ({
 
   if (loading) {
     return (
-      <div className="message-list-container">
-        <div className="message-list message-list-loading">
+      <div className={css("message-list-container")}>
+        <div className={css("message-list message-list-loading")}>
           Loading messages...
         </div>
       </div>
@@ -166,14 +174,14 @@ const MessageList = ({
   }
 
   return (
-    <div className="message-list-container">
+    <div className={css("message-list-container")}>
       {hasOlderMessages && (
-        <div className="older-messages-bar">
+        <div className={css("older-messages-bar")}>
           <button
             type="button"
-            className="chat-secondary-button"
+            className={css("chat-secondary-button")}
             onClick={handleLoadOlder}
-            disabled={loadingOlder}
+            disabled={loadingOlder || syncing}
           >
             {loadingOlder
               ? "Loading older messages..."
@@ -184,13 +192,13 @@ const MessageList = ({
 
       <div
         ref={messageListRef}
-        className="message-list"
+        className={css("message-list")}
         onScroll={handleScroll}
       >
         {messages.length === 0 && (
-          <div className="message-empty">
-            <p>No messages yet.</p>
-            <p>Say hello 👋</p>
+          <div className={css("message-empty")}>
+            <p>{historyError ? "Message history is unavailable. Please retry above." : "No messages yet."}</p>
+            {!historyError && <p>Say hello 👋</p>}
           </div>
         )}
 
@@ -201,9 +209,9 @@ const MessageList = ({
           return (
             <div
               key={message.id}
-              className={`message-row ${
+              className={css(`message-row ${
                 isOwnMessage ? "message-row-own" : "message-row-other"
-              }`}
+              }`)}
             >
               {!isOwnMessage && (
                 <UserAvatar
@@ -215,18 +223,15 @@ const MessageList = ({
               )}
 
               <div
-                className={`message-bubble ${
+                className={css(`message-bubble ${
                   isOwnMessage ? "message-bubble-own" : "message-bubble-other"
-                }`}
+                }`)}
               >
                 <p>{message.content}</p>
 
                 <span>
                   {message.createdAt
-                    ? new Date(message.createdAt).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })
+                    ? formatTimestamp(message.createdAt, true)
                     : ""}
                 </span>
               </div>

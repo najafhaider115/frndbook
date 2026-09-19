@@ -1,6 +1,7 @@
 const ACCESS_TOKEN_KEY = "frndbook_access_token";
 const REFRESH_TOKEN_KEY = "frndbook_refresh_token";
 const USER_KEY = "frndbook_user";
+const SESSION_KEY = "frndbook_session";
 
 export const TOKEN_UPDATED_EVENT = "frndbook:tokens-updated";
 
@@ -23,6 +24,7 @@ const dispatchAuthCleared = () => {
 // ==================================================
 
 export const tokenStorage = {
+  getSessionId() { return localStorage.getItem(SESSION_KEY); },
   // ==================================================
   // ACCESS TOKEN
   // ==================================================
@@ -64,6 +66,7 @@ export const tokenStorage = {
   // ==================================================
 
   saveAuth(accessToken, refreshToken, user) {
+    localStorage.setItem(SESSION_KEY, crypto.randomUUID());
     localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
 
     localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
@@ -110,7 +113,8 @@ export const tokenStorage = {
   // ==================================================
 
   updateUser(user) {
-    localStorage.setItem(USER_KEY, JSON.stringify(user));
+    const serialized = JSON.stringify(user);
+    if (localStorage.getItem(USER_KEY) !== serialized) localStorage.setItem(USER_KEY, serialized);
   },
 
   // ==================================================
@@ -118,6 +122,7 @@ export const tokenStorage = {
   // ==================================================
 
   clear() {
+    localStorage.removeItem(SESSION_KEY);
     localStorage.removeItem(ACCESS_TOKEN_KEY);
 
     localStorage.removeItem(REFRESH_TOKEN_KEY);

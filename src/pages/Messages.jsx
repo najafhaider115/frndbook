@@ -1,3 +1,8 @@
+import { apiErrorMessage } from "../utils/apiError.js";
+import { useChatViewport } from "../hooks/useChatViewport";
+import chatStyles from "../styles/chat.module.css";
+import { bindStyles } from "../utils/bindStyles";
+import StatusMessage from "../components/ui/StatusMessage";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useSearchParams } from "react-router-dom";
@@ -19,9 +24,10 @@ import { createConversationUpdateWebSocket } from "../services/conversationUpdat
 import { subscribeConversationSidebar } from "../services/conversationSidebarSubscription";
 import { applyConversationUpdate, mergeConversation, mergeConversationLists } from "../utils/conversationUpdates";
 
-import "../styles/chat.css";
+const css = bindStyles(chatStyles);
 
 const Messages = () => {
+  const viewportRef = useChatViewport();
   const { user } = useAuth();
 
   const [searchParams, setSearchParams] = useSearchParams();
@@ -63,7 +69,7 @@ const Messages = () => {
     } catch (error) {
       console.error("Failed to load conversations:", error);
 
-      setError(error.response?.data?.message || "Unable to load conversations");
+      setError(apiErrorMessage(error, "Unable to load conversations"));
 
       return [];
     } finally {
@@ -134,7 +140,7 @@ const Messages = () => {
           console.error("Failed to open conversation:", error);
 
           setError(
-            error.response?.data?.message || "Unable to start conversation",
+            apiErrorMessage(error, "Unable to start conversation"),
           );
         }
       }
@@ -229,7 +235,7 @@ const Messages = () => {
       <>
         <Navbar />
 
-        <div className="loading-screen">Loading messages...</div>
+        <div id="main-content" tabIndex={-1} role="status" className={css("loading-screen")}>Loading messages...</div>
       </>
     );
   }
@@ -238,16 +244,16 @@ const Messages = () => {
     <>
       <Navbar />
 
-      <main className="messages-page">
-        <div className="messages-card">
-          {error && <p className="error chat-page-error">{error}</p>}
+      <main ref={viewportRef} id="main-content" tabIndex={-1} className={css("messages-page")}>
+        <div className={css("messages-card")}>
+          {error && <StatusMessage tone="error" className={css("error chat-page-error")}>{error}</StatusMessage>}
 
           <div
-            className={`messages-layout ${
+            className={css(`messages-layout ${
               mobileView === "chat"
                 ? "mobile-chat-active"
                 : "mobile-conversations-active"
-            }`}
+            }`)}
           >
             <ConversationList
               conversations={conversations}

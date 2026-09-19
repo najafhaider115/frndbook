@@ -1,283 +1,87 @@
+import chatStyles from "../../styles/chat.module.css";
+import { bindStyles } from "../../utils/bindStyles";
+import StatusMessage from "../ui/StatusMessage";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-
 import UserAvatar from "../users/UserAvatar";
-
 import MessageList from "./MessageList";
 import MessageComposer from "./MessageComposer";
-
-import { getMessages, markMessagesAsRead } from "../../api/messageApi";
-
+import { getMessages, markMessagesAsRead, sendMessage } from "../../api/messageApi";
 import { createChatWebSocket } from "../../services/chatWebSocketService";
+import { createMessageSession } from "../../services/messageSession";
 
-const PAGE_SIZE = 10;
+const css = bindStyles(chatStyles);
 
-const ChatWindow = ({
-  conversation,
-  currentUserId,
-  onMessageReceived,
-  onBackToConversations,
-}) => {
-  const [messages, setMessages] = useState([]);
-
-  const [loading, setLoading] = useState(true);
-
-  const [loadingOlder, setLoadingOlder] = useState(false);
-
-  const [currentPage, setCurrentPage] = useState(0);
-
-  const [totalPages, setTotalPages] = useState(0);
-
+const ConversationChat = ({ conversation, currentUserId, onMessageReceived, onBackToConversations }) => {
+  const sectionRef = useRef(null);
+  const sessionRef = useRef(null);
   const [socketConnected, setSocketConnected] = useState(false);
-
-  const [error, setError] = useState("");
-
-  const webSocketRef = useRef(null);
-
-  const conversationId = conversation?.id;
-
-  // ==================================================
-  // LOAD INITIAL MESSAGES
-  // ==================================================
+  const [state, setState] = useState({ messages: [], loading: true, syncing: false,
+    loadingOlder: false, hasOlder: false, historyError: "", sendError: "" });
+  const conversationId = conversation.id;
 
   useEffect(() => {
-    if (!conversationId) {
-      return;
-    }
-
-    let cancelled = false;
-
-    const initializeChat = async () => {
-      try {
-        setLoading(true);
-        setError("");
-
-        setMessages([]);
-        setCurrentPage(0);
-        setTotalPages(0);
-        setSocketConnected(false);
-
-        const data = await getMessages(conversationId, 0, PAGE_SIZE);
-
-        if (cancelled) {
-          return;
-        }
-
-        const loadedMessages = [...(data?.content || [])].reverse();
-
-        setMessages(loadedMessages);
-
-        setCurrentPage(data?.number ?? 0);
-
-        setTotalPages(data?.totalPages ?? 0);
-
-        await markMessagesAsRead(conversationId);
-      } catch (error) {
-        if (!cancelled) {
-          console.error("Failed to initialize chat:", error);
-
-          setError(error.response?.data?.message || "Unable to load messages");
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
-    };
-
-    initializeChat();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [conversationId]);
-
-  // ==================================================
-  // WEBSOCKET
-  // ==================================================
-
-  useEffect(() => {
-    if (!conversationId) {
-      return;
-    }
-
-    let cancelled = false;
-
-    const webSocket = createChatWebSocket({
+    let active = true;
+    let resizeTimer;
+    const visible = () => document.visibilityState === "visible" &&
+      Boolean(sectionRef.current?.getClientRects().length);
+    const session = createMessageSession({
       conversationId,
-
-      onMessage: async (message) => {
-        if (cancelled) {
-          return;
-        }
-
-        setMessages((currentMessages) => {
-          const exists = currentMessages.some(
-            (item) => String(item.id) === String(message.id),
-          );
-
-          if (exists) {
-            return currentMessages;
-          }
-
-          return [...currentMessages, message];
-        });
-
-        onMessageReceived?.(message);
-
-        if (String(message.sender?.id) !== String(currentUserId)) {
-          try {
-            await markMessagesAsRead(conversationId);
-          } catch (error) {
-            console.error("Failed to mark messages as read:", error);
-          }
-        }
-      },
-
-      onConnect: () => {
-        if (!cancelled) {
-          setSocketConnected(true);
-          setError("");
-        }
-      },
-
-      onDisconnect: () => {
-        if (!cancelled) {
-          setSocketConnected(false);
-        }
-      },
-
-      onError: (error) => {
-        if (!cancelled) {
-          console.error("Chat WebSocket error:", error);
-
-          setSocketConnected(false);
-        }
-      },
+      fetchPage: (page, size, signal) => getMessages(conversationId, page, size, signal),
+      saveMessage: (content) => sendMessage(conversationId, content),
+      markRead: () => markMessagesAsRead(conversationId),
+      isVisible: visible,
+      onState: setState,
+      onMessage: onMessageReceived,
     });
-
-    if (!webSocket) {
-      return;
-    }
-
-    webSocketRef.current = webSocket;
-
-    webSocket.connect();
-
+    sessionRef.current = session;
+    void session.initialize();
+    const socket = createChatWebSocket({
+      conversationId,
+      onMessage: session.receive,
+      onConnect: () => {
+        if (!active) return;
+        setSocketConnected(true);
+        void session.recover();
+      },
+      onDisconnect: () => { if (active) setSocketConnected(false); },
+      onError: () => { if (active) setSocketConnected(false); },
+    });
+    socket?.connect();
+    const resume = () => {
+      if (visible()) { void session.recover(); session.requestRead(); }
+    };
+    const resize = () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(resume, 200);
+    };
+    document.addEventListener("visibilitychange", resume);
+    window.addEventListener("focus", resume);
+    window.addEventListener("resize", resize);
+    // A mobile conversation can become visible without a viewport resize.
+    const observer = new ResizeObserver(() => { if (visible()) session.requestRead(); });
+    if (sectionRef.current) observer.observe(sectionRef.current);
     return () => {
-      cancelled = true;
-
-      const currentWebSocket = webSocketRef.current;
-
-      webSocketRef.current = null;
-
-      if (currentWebSocket) {
-        currentWebSocket.disconnect().catch((error) => {
-          console.error("Failed to disconnect chat WebSocket:", error);
-        });
-      }
+      active = false;
+      clearTimeout(resizeTimer);
+      observer.disconnect();
+      document.removeEventListener("visibilitychange", resume);
+      window.removeEventListener("focus", resume);
+      window.removeEventListener("resize", resize);
+      session.dispose();
+      sessionRef.current = null;
+      void socket?.disconnect().catch(() => {});
     };
   }, [conversationId, currentUserId, onMessageReceived]);
-
-  // ==================================================
-  // LOAD OLDER MESSAGES
-  // ==================================================
-
-  const loadOlderMessages = async () => {
-    if (loadingOlder || currentPage >= totalPages - 1) {
-      return;
-    }
-
-    const nextPage = currentPage + 1;
-
-    try {
-      setLoadingOlder(true);
-      setError("");
-
-      const data = await getMessages(conversationId, nextPage, PAGE_SIZE);
-
-      const olderMessages = [...(data?.content || [])].reverse();
-
-      setMessages((currentMessages) => {
-        const existingIds = new Set(
-          currentMessages.map((message) => String(message.id)),
-        );
-
-        const uniqueOlderMessages = olderMessages.filter(
-          (message) => !existingIds.has(String(message.id)),
-        );
-
-        return [...uniqueOlderMessages, ...currentMessages];
-      });
-
-      setCurrentPage(data?.number ?? nextPage);
-
-      setTotalPages(data?.totalPages ?? totalPages);
-    } catch (error) {
-      console.error("Failed to load older messages:", error);
-
-      setError(
-        error.response?.data?.message || "Unable to load older messages",
-      );
-    } finally {
-      setLoadingOlder(false);
-    }
-  };
-
-  // ==================================================
-  // SEND MESSAGE
-  // ==================================================
-
-  const handleSendMessage = async (content) => {
-    setError("");
-
-    try {
-      if (webSocketRef.current && webSocketRef.current.isConnected()) {
-        webSocketRef.current.sendMessage(content);
-
-        return;
-      }
-
-      const { sendMessage } = await import("../../api/messageApi");
-
-      const savedMessage = await sendMessage(conversationId, content);
-
-      if (!savedMessage) {
-        return;
-      }
-    } catch (error) {
-      console.error("Failed to send message:", error);
-
-      setError(
-        error.response?.data?.message ||
-          error.message ||
-          "Unable to send message",
-      );
-
-      throw error;
-    }
-  };
-
-  // ==================================================
-  // NO CONVERSATION
-  // ==================================================
-
-  if (!conversation) {
-    return (
-      <section className="chat-window chat-window-empty">
-        <p>Select a conversation to start chatting.</p>
-      </section>
-    );
-  }
 
   const otherUser = conversation.otherUser;
 
   return (
-    <section className="chat-window">
-      <header className="chat-header">
+    <section ref={sectionRef} className={css("chat-window")}>
+      <header className={css("chat-header")}>
         <button
           type="button"
-          className="mobile-chat-back-button"
+          className={css("mobile-chat-back-button")}
           onClick={onBackToConversations}
           aria-label="Back to conversations"
         >
@@ -286,7 +90,7 @@ const ChatWindow = ({
 
         <Link
           to={`/users/${otherUser?.id}`}
-          className="chat-header-avatar-link"
+          className={css("chat-header-avatar-link")}
           aria-label={`View ${otherUser?.name || "user"} profile`}
         >
           <UserAvatar
@@ -297,35 +101,59 @@ const ChatWindow = ({
           />
         </Link>
 
-        <div className="chat-header-info">
+        <div className={css("chat-header-info")}>
           <h2>{otherUser?.name || "Unknown User"}</h2>
 
           <span
-            className={
+            className={css(
               socketConnected
                 ? "chat-connection-status connected"
                 : "chat-connection-status"
-            }
+            )}
           >
-            {socketConnected ? "Connected" : "Connecting..."}
+            {socketConnected ? (state.syncing ? "Syncing messages..." : "Connected") : "Live updates disconnected"}
           </span>
         </div>
       </header>
 
-      {error && <p className="error chat-error">{error}</p>}
+      {!socketConnected && (
+        <p role="status" className={css("chat-status")}>
+          You can still send messages. Live updates will resume when connected.
+        </p>
+      )}
+      {state.historyError && (
+        <div className={css("chat-recovery")}>
+          <StatusMessage tone="error">{state.historyError}</StatusMessage>
+          <button type="button" className={css("chat-secondary-button")}
+            disabled={state.loading || state.syncing || state.loadingOlder}
+            onClick={() => sessionRef.current?.recover()}>Retry loading messages</button>
+        </div>
+      )}
+      {state.sendError && <StatusMessage tone="error" className={css("chat-error")}>{state.sendError}</StatusMessage>}
 
       <MessageList
-        messages={messages}
+        messages={state.messages}
         currentUserId={currentUserId}
-        loading={loading}
-        loadingOlder={loadingOlder}
-        hasOlderMessages={currentPage < totalPages - 1}
-        onLoadOlder={loadOlderMessages}
+        loading={state.loading && state.messages.length === 0}
+        loadingOlder={state.loadingOlder}
+        syncing={state.syncing}
+        historyError={state.historyError}
+        hasOlderMessages={state.hasOlder}
+        onLoadOlder={() => sessionRef.current?.loadOlder()}
       />
 
-      <MessageComposer onSend={handleSendMessage} disabled={!conversationId} />
+      <MessageComposer onSend={(content) => sessionRef.current.send(content)} />
     </section>
   );
 };
 
-export default ChatWindow;
+
+export default function ChatWindow(props) {
+  if (!props.conversation) {
+    return <section className={css("chat-window chat-window-empty")}>
+      <p>Select a conversation to start chatting.</p>
+    </section>;
+  }
+  // Switching account/conversation remounts history and composer together.
+  return <ConversationChat key={`${props.currentUserId}:${props.conversation.id}`} {...props} />;
+}

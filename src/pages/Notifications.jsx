@@ -1,8 +1,17 @@
+import { formatTimestamp, notificationLabel } from "../utils/displayText.js";
+import { apiErrorMessage } from "../utils/apiError.js";
+import notificationsStyles from "../styles/notifications.module.css";
+import { bindStyles } from "../utils/bindStyles";
+import StatusMessage from "../components/ui/StatusMessage";
+import PageContainer from "../components/ui/PageContainer";
+import Card from "../components/ui/Card";
 import { useEffect, useState } from "react";
 
 import Navbar from "../components/layout/Navbar";
 
 import { useNotifications } from "../context/NotificationContext";
+
+const css = bindStyles(notificationsStyles);
 
 const PAGE_SIZE = 10;
 
@@ -65,7 +74,7 @@ const Notifications = () => {
       console.error("Failed to mark notification as read:", error);
 
       setActionError(
-        error.response?.data?.message || "Unable to mark notification as read",
+        apiErrorMessage(error, "Unable to mark notification as read"),
       );
     } finally {
       setActionLoadingId(null);
@@ -86,8 +95,7 @@ const Notifications = () => {
       console.error("Failed to mark all notifications as read:", error);
 
       setActionError(
-        error.response?.data?.message ||
-          "Unable to mark all notifications as read",
+        apiErrorMessage(error, "Unable to mark all notifications as read"),
       );
     } finally {
       setMarkAllLoading(false);
@@ -103,7 +111,7 @@ const Notifications = () => {
       <>
         <Navbar />
 
-        <div className="loading-screen">Loading notifications...</div>
+        <div id="main-content" tabIndex={-1} role="status" className={css("loading-screen")}>Loading notifications...</div>
       </>
     );
   }
@@ -116,9 +124,9 @@ const Notifications = () => {
     <>
       <Navbar />
 
-      <main className="notifications-page">
-        <div className="notifications-card">
-          <div className="notifications-header">
+      <PageContainer className={css("notifications-page")}>
+        <Card className={css("notifications-card")}>
+          <div className={css("notifications-header")}>
             <div>
               <h1>Notifications</h1>
 
@@ -128,7 +136,7 @@ const Notifications = () => {
             {notifications.some((notification) => !notification.read) && (
               <button
                 type="button"
-                className="notifications-mark-all"
+                className={css("notifications-mark-all")}
                 onClick={handleMarkAllAsRead}
                 disabled={markAllLoading}
               >
@@ -138,11 +146,11 @@ const Notifications = () => {
           </div>
 
           {(error || actionError) && (
-            <p className="error">{actionError || error}</p>
+            <StatusMessage tone="error" className={css("error")}>{actionError || error}</StatusMessage>
           )}
 
           {notifications.length === 0 && !error && (
-            <div className="notifications-empty">
+            <div className={css("notifications-empty")}>
               <h2>No notifications yet</h2>
 
               <p>You're all caught up. New activity will appear here.</p>
@@ -150,40 +158,40 @@ const Notifications = () => {
           )}
 
           {notifications.length > 0 && (
-            <div className="notification-list">
+            <div className={css("notification-list")}>
               {notifications.map((notification) => (
                 <article
                   key={notification.id}
-                  className={`notification-item ${
+                  className={css(`notification-item ${
                     notification.read
                       ? "notification-read"
                       : "notification-unread"
-                  }`}
+                  }`)}
                 >
-                  <div className="notification-indicator">
+                  <div className={css("notification-indicator")}>
                     {!notification.read && (
                       <span
-                        className="notification-unread-dot"
+                        className={css("notification-unread-dot")}
                         aria-label="Unread"
                       />
                     )}
                   </div>
 
-                  <div className="notification-content">
-                    <p className="notification-message">
+                  <div className={css("notification-content")}>
+                    <p className={css("notification-message")}>
                       {notification.message}
                     </p>
 
-                    <div className="notification-meta">
+                    <div className={css("notification-meta")}>
                       <span>
                         {notification.createdAt
-                          ? new Date(notification.createdAt).toLocaleString()
+                          ? formatTimestamp(notification.createdAt)
                           : ""}
                       </span>
 
                       {notification.type && (
-                        <span className="notification-type">
-                          {notification.type}
+                        <span className={css("notification-type")}>
+                          {notificationLabel(notification.type)}
                         </span>
                       )}
                     </div>
@@ -192,7 +200,7 @@ const Notifications = () => {
                   {!notification.read && (
                     <button
                       type="button"
-                      className="notification-read-button"
+                      className={css("notification-read-button")}
                       onClick={() => handleMarkAsRead(notification.id)}
                       disabled={actionLoadingId === notification.id}
                     >
@@ -207,7 +215,7 @@ const Notifications = () => {
           )}
 
           {totalPages > 1 && (
-            <div className="notification-pagination">
+            <div className={css("notification-pagination")}>
               <button
                 type="button"
                 disabled={loading || page === 0}
@@ -229,8 +237,8 @@ const Notifications = () => {
               </button>
             </div>
           )}
-        </div>
-      </main>
+        </Card>
+      </PageContainer>
     </>
   );
 };

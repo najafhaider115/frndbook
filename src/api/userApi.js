@@ -54,8 +54,9 @@ export const updateProfileImage = async (file) => {
 // SEARCH USERS
 // ==================================================
 
-export const searchUsers = async (name, page = 0, size = 10) => {
+export const searchUsers = async (name, page = 0, size = 10, signal) => {
   const response = await axiosClient.get("/api/users/search", {
+    signal,
     params: {
       name,
       page,

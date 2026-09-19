@@ -1,4 +1,8 @@
+import usersStyles from "../../styles/users.module.css";
+import { bindStyles } from "../../utils/bindStyles";
 import { useEffect, useState } from "react";
+
+const css = bindStyles(usersStyles);
 
 const UserAvatar = ({ name, image, userId, size = "medium" }) => {
   const firstLetter = name?.trim()?.charAt(0)?.toUpperCase() || "?";
@@ -18,7 +22,7 @@ const UserAvatar = ({ name, image, userId, size = "medium" }) => {
 
   if (!imageUrl || imageError) {
     return (
-      <div className={`user-avatar user-avatar-placeholder ${size}`}>
+      <div className={css(`user-avatar user-avatar-placeholder ${size}`)}>
         {firstLetter}
       </div>
     );
@@ -28,7 +32,7 @@ const UserAvatar = ({ name, image, userId, size = "medium" }) => {
     <img
       src={imageUrl}
       alt={name || "User"}
-      className={`user-avatar ${size}`}
+      className={css(`user-avatar ${size}`)}
       onError={() => setImageError(true)}
     />
   );

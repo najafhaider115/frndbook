@@ -1,4 +1,9 @@
+import { formatTimestamp } from "../../utils/displayText.js";
+import chatStyles from "../../styles/chat.module.css";
+import { bindStyles } from "../../utils/bindStyles";
 import UserAvatar from "../users/UserAvatar";
+
+const css = bindStyles(chatStyles);
 
 const ConversationList = ({
   conversations,
@@ -7,23 +12,23 @@ const ConversationList = ({
   loading,
 }) => {
   return (
-    <aside className="conversation-list">
-      <div className="conversation-list-header">
+    <aside className={css("conversation-list")}>
+      <div className={css("conversation-list-header")}>
         <h2>Messages</h2>
       </div>
 
       {loading && conversations.length === 0 && (
-        <p className="chat-status">Loading conversations...</p>
+        <p className={css("chat-status")}>Loading conversations...</p>
       )}
 
       {!loading && conversations.length === 0 && (
-        <div className="conversation-empty">
+        <div className={css("conversation-empty")}>
           <p>No conversations yet.</p>
           <p>Open a friend and start a conversation.</p>
         </div>
       )}
 
-      <div className="conversation-items">
+      <div className={css("conversation-items")}>
         {conversations.map((conversation) => {
           const otherUser = conversation.otherUser;
 
@@ -34,9 +39,10 @@ const ConversationList = ({
             <button
               key={conversation.id}
               type="button"
-              className={`conversation-item ${
+              className={css(`conversation-item ${
                 isSelected ? "conversation-item-active" : ""
-              }`}
+              }`)}
+              aria-current={isSelected ? "true" : undefined}
               onClick={() => onSelect(conversation)}
             >
               <UserAvatar
@@ -46,7 +52,7 @@ const ConversationList = ({
                 size="medium"
               />
 
-              <div className="conversation-item-content">
+              <div className={css("conversation-item-content")}>
                 <strong>{otherUser?.name || "Unknown User"}</strong>
 
                 <span>
@@ -54,12 +60,9 @@ const ConversationList = ({
                 </span>
               </div>
 
-              <div className="conversation-item-time">
+              <div className={css("conversation-item-time")}>
                 {conversation.updatedAt
-                  ? new Date(conversation.updatedAt).toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })
+                  ? formatTimestamp(conversation.updatedAt, true)
                   : ""}
               </div>
             </button>

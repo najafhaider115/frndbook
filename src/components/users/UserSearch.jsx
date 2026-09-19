@@ -1,3 +1,7 @@
+import { apiErrorMessage } from "../../utils/apiError.js";
+import usersStyles from "../../styles/users.module.css";
+import { bindStyles } from "../../utils/bindStyles";
+import StatusMessage from "../ui/StatusMessage";
 import { useEffect, useState } from "react";
 
 import {
@@ -11,6 +15,8 @@ import { useAuth } from "../../auth/AuthContext";
 
 import UserCard from "./UserCard";
 
+const css = bindStyles(usersStyles);
+
 const UserSearch = () => {
   const { user: currentUser } = useAuth();
 
@@ -21,6 +27,10 @@ const UserSearch = () => {
   const [recentSearches, setRecentSearches] = useState([]);
 
   const [page, setPage] = useState(0);
+  const [requestedPage, setRequestedPage] = useState(0);
+  const [requestVersion, setRequestVersion] = useState(0);
+  const [clearing, setClearing] = useState(false);
+  const [recentError, setRecentError] = useState("");
 
   const [totalPages, setTotalPages] = useState(0);
 
@@ -35,116 +45,54 @@ const UserSearch = () => {
   // ==================================================
 
   useEffect(() => {
+    let active = true;
     const loadRecentSearches = async () => {
       try {
         setRecentLoading(true);
 
         const data = await getRecentSearches();
 
-        setRecentSearches(data || []);
+        if (active) setRecentSearches(data || []);
       } catch (error) {
-        console.error("Failed to load recent searches:", error);
+        if (active) setRecentError(apiErrorMessage(error, "Unable to load recent searches"));
       } finally {
-        setRecentLoading(false);
+        if (active) setRecentLoading(false);
       }
     };
 
     loadRecentSearches();
+    return () => { active = false; };
   }, []);
 
-  // ==================================================
-  // SEARCH
-  // ==================================================
-
+  // One effect owns debouncing, paging and cancellation for each search.
   useEffect(() => {
-    const trimmedSearch = searchTerm.trim();
-
-    if (!trimmedSearch) {
-      setResults([]);
-
-      setPage(0);
-
-      setTotalPages(0);
-
-      setError("");
-
-      return;
-    }
-
+    const query = searchTerm.trim();
+    if (!query) return;
+    const abort = new AbortController();
     const timer = setTimeout(async () => {
       try {
-        setLoading(true);
-
-        setError("");
-
-        const data = await searchUsers(trimmedSearch, 0, 10);
-
-        const users = data?.content || [];
-
-        /*
-         * Don't show the currently logged-in
-         * user in user search.
-         */
-
-        const filteredUsers = users.filter(
-          (searchedUser) => searchedUser.id !== currentUser?.id,
-        );
-
-        setResults(filteredUsers);
-
-        setPage(data?.number ?? 0);
-
+        const data = await searchUsers(query, requestedPage, 10, abort.signal);
+        if (abort.signal.aborted) return;
+        setResults((data?.content || []).filter(item => String(item.id) !== String(currentUser?.id)));
+        setPage(data?.number ?? requestedPage);
         setTotalPages(data?.totalPages ?? 0);
       } catch (error) {
-        console.error("User search failed:", error);
+        if (!abort.signal.aborted) {
+          setError(apiErrorMessage(error, "Unable to search users"));
+          setResults([]);
+        }
+      } finally { if (!abort.signal.aborted) setLoading(false); }
+    }, requestedPage === 0 ? 400 : 0);
+    return () => { clearTimeout(timer); abort.abort(); };
+  }, [searchTerm, requestedPage, requestVersion, currentUser?.id]);
 
-        setError(error.response?.data?.message || "Unable to search users");
-
-        setResults([]);
-      } finally {
-        setLoading(false);
-      }
-    }, 400);
-
-    return () => {
-      clearTimeout(timer);
-    };
-  }, [searchTerm, currentUser?.id]);
-
-  // ==================================================
-  // LOAD PAGE
-  // ==================================================
-
-  const loadPage = async (nextPage) => {
-    if (!searchTerm.trim()) {
-      return;
-    }
-
-    try {
-      setLoading(true);
-
-      setError("");
-
-      const data = await searchUsers(searchTerm.trim(), nextPage, 10);
-
-      const users = data?.content || [];
-
-      const filteredUsers = users.filter(
-        (searchedUser) => searchedUser.id !== currentUser?.id,
-      );
-
-      setResults(filteredUsers);
-
-      setPage(data?.number ?? nextPage);
-
-      setTotalPages(data?.totalPages ?? 0);
-    } catch (error) {
-      console.error("Failed to load search page:", error);
-
-      setError(error.response?.data?.message || "Unable to load results");
-    } finally {
-      setLoading(false);
-    }
+  const changeSearch = value => {
+    setSearchTerm(value); setRequestedPage(0); setPage(0); setTotalPages(0);
+    setResults([]); setError(""); setLoading(Boolean(value.trim()));
+  };
+  const loadPage = nextPage => {
+    if (loading || nextPage === page) return;
+    setError(""); setLoading(true); setRequestedPage(nextPage); setRequestVersion(version => version + 1);
   };
 
   // ==================================================
@@ -173,38 +121,43 @@ const UserSearch = () => {
   // ==================================================
 
   const handleClearRecentSearches = async () => {
+    if (clearing) return;
+    setClearing(true); setRecentError("");
     try {
       await clearRecentSearches();
 
       setRecentSearches([]);
     } catch (error) {
-      console.error("Failed to clear recent searches:", error);
-    }
+      setRecentError(apiErrorMessage(error, "Unable to clear recent searches"));
+    } finally { setClearing(false); }
   };
 
   return (
-    <section className="user-search">
-      <div className="section-header">
+    <section className={css("user-search")}>
+      <div className={css("section-header")}>
         <h2>Find People</h2>
       </div>
 
       <input
         type="text"
-        className="search-input"
+        className={css("search-input")}
+        aria-label="Search people by name"
         placeholder="Search users by name..."
         value={searchTerm}
-        onChange={(event) => setSearchTerm(event.target.value)}
+        onChange={(event) => changeSearch(event.target.value)}
       />
 
-      {error && <p className="error">{error}</p>}
+      {error && <StatusMessage tone="error" className={css("error")}>{error}
+        <button type="button" onClick={() => { setError(""); setLoading(true); setRequestVersion(version => version + 1); }}>Retry search</button>
+      </StatusMessage>}
 
-      {loading && <p className="search-status">Searching...</p>}
+      {loading && <p role="status" className={css("search-status")}>Searching...</p>}
 
       {!loading && searchTerm.trim() && results.length === 0 && !error && (
-        <p className="search-status">No users found.</p>
+        <p className={css("search-status")}>No users found.</p>
       )}
 
-      <div className="user-results">
+      <div aria-busy={loading} className={css("user-results")}>
         {results.map((searchedUser) => (
           <UserCard
             key={searchedUser.id}
@@ -215,7 +168,7 @@ const UserSearch = () => {
       </div>
 
       {totalPages > 1 && searchTerm.trim() && (
-        <div className="pagination">
+        <div className={css("pagination")}>
           <button
             disabled={loading || page === 0}
             onClick={() => loadPage(page - 1)}
@@ -237,29 +190,32 @@ const UserSearch = () => {
       )}
 
       {!searchTerm.trim() && (
-        <section className="recent-searches">
-          <div className="section-header">
+        <section className={css("recent-searches")}>
+          <div className={css("section-header")}>
             <h3>Recent Searches</h3>
 
             {recentSearches.length > 0 && (
               <button
-                className="text-button"
+                className={css("text-button")}
                 onClick={handleClearRecentSearches}
+                disabled={clearing}
               >
-                Clear
+                {clearing ? "Clearing..." : "Clear"}
               </button>
             )}
           </div>
 
+          {recentError && <StatusMessage tone="error">{recentError}</StatusMessage>}
+
           {recentLoading && (
-            <p className="search-status">Loading recent searches...</p>
+            <p className={css("search-status")}>Loading recent searches...</p>
           )}
 
-          {!recentLoading && recentSearches.length === 0 && (
-            <p className="search-status">No recent searches.</p>
+          {!recentLoading && !recentError && recentSearches.length === 0 && (
+            <p className={css("search-status")}>No recent searches.</p>
           )}
 
-          <div className="user-results">
+          <div className={css("user-results")}>
             {recentSearches.map((recentUser) => (
               <UserCard
                 key={recentUser.id}

@@ -1,7 +1,16 @@
+import { apiError } from "../utils/apiError";
+import { apiErrorMessage } from "../utils/apiError.js";
+import authStyles from "../styles/auth.module.css";
+import { bindStyles } from "../utils/bindStyles";
+import StatusMessage from "../components/ui/StatusMessage";
+import FormField from "../components/ui/FormField";
+import Button from "../components/ui/Button";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
 import { resendVerification, verifyEmail } from "../api/authApi";
+
+const css = bindStyles(authStyles);
 
 const RESEND_COOLDOWN_SECONDS = 60;
 
@@ -15,6 +24,7 @@ const VerifyEmail = () => {
   const [otp, setOtp] = useState("");
 
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
   const [success, setSuccess] = useState("");
 
   const [loading, setLoading] = useState(false);
@@ -42,6 +52,7 @@ const VerifyEmail = () => {
     event.preventDefault();
 
     setError("");
+    setFieldErrors({});
     setSuccess("");
     setLoading(true);
 
@@ -57,9 +68,10 @@ const VerifyEmail = () => {
         navigate("/login");
       }, 1200);
     } catch (error) {
+      setFieldErrors(apiError(error).fieldErrors);
       console.error(error);
 
-      setError(error.response?.data?.message || "Unable to verify email");
+      setError(apiErrorMessage(error, "Unable to verify email"));
     } finally {
       setLoading(false);
     }
@@ -71,6 +83,7 @@ const VerifyEmail = () => {
     }
 
     setError("");
+    setFieldErrors({});
     setSuccess("");
     setResending(true);
 
@@ -83,10 +96,11 @@ const VerifyEmail = () => {
 
       setResendCountdown(RESEND_COOLDOWN_SECONDS);
     } catch (error) {
+      setFieldErrors(apiError(error).fieldErrors);
       console.error(error);
 
       setError(
-        error.response?.data?.message || "Unable to resend verification code",
+        apiErrorMessage(error, "Unable to resend verification code"),
       );
     } finally {
       setResending(false);
@@ -94,8 +108,8 @@ const VerifyEmail = () => {
   };
 
   return (
-    <div className="auth-page">
-      <div className="auth-card">
+    <div className={css("auth-page")}>
+      <div className={css("auth-card")}>
         <h1>FrndBook</h1>
 
         <h2>Verify Your Email</h2>
@@ -103,7 +117,7 @@ const VerifyEmail = () => {
         <p>Enter the 6-digit verification code sent to your email.</p>
 
         <form onSubmit={handleVerify}>
-          <input
+          <FormField label="Email" error={fieldErrors.email} autoComplete="email"
             type="email"
             placeholder="Email"
             value={email}
@@ -111,7 +125,7 @@ const VerifyEmail = () => {
             required
           />
 
-          <input
+          <FormField label="Verification code" error={fieldErrors.otp} autoComplete="one-time-code"
             type="text"
             inputMode="numeric"
             maxLength={6}
@@ -123,16 +137,16 @@ const VerifyEmail = () => {
             required
           />
 
-          {error && <p className="error">{error}</p>}
+          {error && <StatusMessage tone="error" className={css("error")}>{error}</StatusMessage>}
 
-          {success && <p className="success">{success}</p>}
+          {success && <StatusMessage tone="success" className={css("success")}>{success}</StatusMessage>}
 
-          <button type="submit" disabled={loading || otp.length !== 6}>
+          <Button type="submit" disabled={loading || otp.length !== 6}>
             {loading ? "Verifying..." : "Verify Email"}
-          </button>
+          </Button>
         </form>
 
-        <button
+        <Button
           type="button"
           onClick={handleResend}
           disabled={resending || resendCountdown > 0}
@@ -142,7 +156,7 @@ const VerifyEmail = () => {
             : resendCountdown > 0
               ? `Resend code in ${resendCountdown}s`
               : "Resend code"}
-        </button>
+        </Button>
 
         <p>
           <Link to="/login">Back to Login</Link>

@@ -1,0 +1,44 @@
+.home-page {
+  max-width: 1000px;
+}
+
+.welcome-section {
+  padding: 25px;
+  margin-bottom: 25px;
+}
+
+.welcome-section h1 {
+  margin-top: 0;
+  margin-bottom: 12px;
+  line-height: 1.2;
+}
+
+.welcome-section p {
+  margin: 6px 0;
+  color: var(--color-text-secondary);
+}
+
+@media (max-width: 700px) {
+  .home-page {
+    padding: 20px 12px;
+  }
+
+  .welcome-section {
+    padding: 20px;
+    border-radius: var(--radius-lg);
+  }
+
+  .welcome-section h1 {
+    font-size: 24px;
+  }
+}
+
+@media (max-width: 380px) {
+  .welcome-section {
+    padding: 16px;
+  }
+
+  .welcome-section h1 {
+    font-size: 22px;
+  }
+}

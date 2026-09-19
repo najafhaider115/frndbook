@@ -1,3 +1,11 @@
+import { formatTimestamp } from "../utils/displayText.js";
+import { apiErrorMessage } from "../utils/apiError.js";
+import friendsStyles from "../styles/friends.module.css";
+import profileStyles from "../styles/profile.module.css";
+import { bindStyles } from "../utils/bindStyles";
+import StatusMessage from "../components/ui/StatusMessage";
+import PageContainer from "../components/ui/PageContainer";
+import Card from "../components/ui/Card";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
@@ -21,6 +29,8 @@ import {
 import { useAuth } from "../auth/AuthContext";
 
 import { FRIENDSHIP_STATUS, getFriendshipState } from "../utils/friendship";
+
+const css = bindStyles(friendsStyles, profileStyles);
 
 const UserProfile = () => {
   const { userId } = useParams();
@@ -64,7 +74,7 @@ const UserProfile = () => {
         console.error("Failed to load user profile:", error);
 
         setError(
-          error.response?.data?.message || "Unable to load user profile",
+          apiErrorMessage(error, "Unable to load user profile"),
         );
       } finally {
         setLoading(false);
@@ -114,7 +124,7 @@ const UserProfile = () => {
         console.error("Failed to load friendship state:", error);
 
         setFriendshipError(
-          error.response?.data?.message || "Unable to load friendship status",
+          apiErrorMessage(error, "Unable to load friendship status"),
         );
       } finally {
         setFriendshipLoaded(true);
@@ -146,7 +156,7 @@ const UserProfile = () => {
       console.error("Failed to send friend request:", error);
 
       setFriendshipError(
-        error.response?.data?.message || "Unable to send friend request",
+        apiErrorMessage(error, "Unable to send friend request"),
       );
     } finally {
       setFriendshipLoading(false);
@@ -175,7 +185,7 @@ const UserProfile = () => {
       console.error("Failed to accept friend request:", error);
 
       setFriendshipError(
-        error.response?.data?.message || "Unable to accept friend request",
+        apiErrorMessage(error, "Unable to accept friend request"),
       );
     } finally {
       setFriendshipLoading(false);
@@ -204,7 +214,7 @@ const UserProfile = () => {
       console.error("Failed to reject friend request:", error);
 
       setFriendshipError(
-        error.response?.data?.message || "Unable to reject friend request",
+        apiErrorMessage(error, "Unable to reject friend request"),
       );
     } finally {
       setFriendshipLoading(false);
@@ -239,7 +249,7 @@ const UserProfile = () => {
       console.error("Failed to remove friend:", error);
 
       setFriendshipError(
-        error.response?.data?.message || "Unable to remove friend",
+        apiErrorMessage(error, "Unable to remove friend"),
       );
     } finally {
       setFriendshipLoading(false);
@@ -277,7 +287,7 @@ const UserProfile = () => {
       <>
         <Navbar />
 
-        <div className="loading-screen">Loading profile...</div>
+        <div id="main-content" tabIndex={-1} role="status" className={css("loading-screen")}>Loading profile...</div>
       </>
     );
   }
@@ -291,15 +301,15 @@ const UserProfile = () => {
       <>
         <Navbar />
 
-        <main className="profile-page">
-          <div className="profile-card">
-            <p className="error">{error || "User not found."}</p>
+        <PageContainer className={css("profile-page")}>
+          <Card className={css("profile-card")}>
+            <StatusMessage tone="error" className={css("error")}>{error || "User not found."}</StatusMessage>
 
-            <Link to="/" className="back-link">
+            <Link to="/" className={css("back-link")}>
               ← Back to Home
             </Link>
-          </div>
-        </main>
+          </Card>
+        </PageContainer>
       </>
     );
   }
@@ -314,13 +324,13 @@ const UserProfile = () => {
     <>
       <Navbar />
 
-      <main className="profile-page">
-        <div className="profile-card user-profile-card">
-          <Link to="/" className="back-link">
+      <PageContainer className={css("profile-page")}>
+        <Card className={css("profile-card user-profile-card")}>
+          <Link to="/" className={css("back-link")}>
             ← Back to Home
           </Link>
 
-          <div className="profile-image-section">
+          <div className={css("profile-image-section")}>
             <UserAvatar
               name={user.name}
               image={user.profileImage}
@@ -329,29 +339,29 @@ const UserProfile = () => {
             />
           </div>
 
-          <div className="user-profile-info">
+          <div className={css("user-profile-info")}>
             <h1>{user.name}</h1>
 
-            <p className="user-profile-bio">{user.bio || "No bio available"}</p>
+            <p className={css("user-profile-bio")}>{user.bio || "No bio available"}</p>
 
-            <div className="profile-details">
+            <div className={css("profile-details")}>
               <p>
                 <strong>Status:</strong> {user.status || "—"}
               </p>
 
               <p>
                 <strong>Last seen:</strong>{" "}
-                {user.lastSeen ? new Date(user.lastSeen).toLocaleString() : "—"}
+                {user.lastSeen ? formatTimestamp(user.lastSeen) : "—"}
               </p>
             </div>
           </div>
 
           {!isOwnProfile && (
-            <div className="friend-action-section">
-              {friendshipError && <p className="error">{friendshipError}</p>}
+            <div className={css("friend-action-section")}>
+              {friendshipError && <StatusMessage tone="error" className={css("error")}>{friendshipError}</StatusMessage>}
 
               {!friendshipLoaded ? (
-                <p className="friendship-loading">Checking friendship...</p>
+                <p className={css("friendship-loading")}>Checking friendship...</p>
               ) : (
                 <FriendAction
                   status={friendshipStatus}
@@ -365,8 +375,8 @@ const UserProfile = () => {
               )}
             </div>
           )}
-        </div>
-      </main>
+        </Card>
+      </PageContainer>
     </>
   );
 };

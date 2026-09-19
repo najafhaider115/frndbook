@@ -1,0 +1,58 @@
+/* ==================================================
+   DESIGN SYSTEM / GLOBAL
+   ================================================== */
+
+:root {
+  --color-bg: #f5f6f8;
+  --color-surface: #ffffff;
+
+  --color-text: #222222;
+  --color-text-secondary: #666666;
+  --color-text-muted: #666666;
+
+  --color-border: #e2e5e9;
+  --color-border-light: #eeeeee;
+
+  --color-primary: #222222;
+  --color-primary-hover: #111111;
+
+  --color-danger: #b3261e;
+  --color-success: #2e7d32;
+
+  --color-hover: #f7f7f7;
+  --color-selected: #f0f1f3;
+  --color-disabled: #f2f2f2;
+
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 12px;
+
+  --shadow-card: 0 2px 10px rgba(0, 0, 0, 0.05);
+  --shadow-menu: 0 8px 24px rgba(0, 0, 0, 0.1);
+
+  --navbar-height: 64px;
+
+  --page-padding-x: 20px;
+  --page-padding-y: 35px;
+
+  --transition-fast: 0.15s ease;
+  /* Shared control colours; retain existing values during migration. */
+  --color-control-border: #cccccc;
+  --color-outline: #555555;
+  --color-text-strong: #333333;
+  --color-text-subtle: #777777;
+  --color-item-border: #e5e5e5;
+  --color-on-primary: #ffffff;
+  --control-height: 44px;
+  --color-focus: #2459a6;
+  --color-danger-surface: #fff2f1;
+  --color-success-surface: #edf7ee;
+}
+
+
+@media (max-width: 700px) {
+:root {
+--navbar-height: 56px;
+}
+}

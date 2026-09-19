@@ -1,7 +1,16 @@
+import { apiError } from "../utils/apiError";
+import { apiErrorMessage } from "../utils/apiError.js";
+import authStyles from "../styles/auth.module.css";
+import { bindStyles } from "../utils/bindStyles";
+import StatusMessage from "../components/ui/StatusMessage";
+import FormField from "../components/ui/FormField";
+import Button from "../components/ui/Button";
 import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
 import { resetPassword } from "../api/authApi";
+
+const css = bindStyles(authStyles);
 
 const ResetPassword = () => {
   const navigate = useNavigate();
@@ -15,6 +24,7 @@ const ResetPassword = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
 
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
 
   const [success, setSuccess] = useState("");
 
@@ -24,6 +34,7 @@ const ResetPassword = () => {
     event.preventDefault();
 
     setError("");
+    setFieldErrors({});
     setSuccess("");
 
     if (!token) {
@@ -58,23 +69,24 @@ const ResetPassword = () => {
         navigate("/login");
       }, 1200);
     } catch (error) {
+      setFieldErrors(apiError(error).fieldErrors);
       console.error(error);
 
-      setError(error.response?.data?.message || "Unable to reset password");
+      setError(apiErrorMessage(error, "Unable to reset password"));
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="auth-page">
-      <div className="auth-card">
+    <div className={css("auth-page")}>
+      <div className={css("auth-card")}>
         <h1>FrndBook</h1>
 
         <h2>Reset Password</h2>
 
         <form onSubmit={handleSubmit}>
-          <input
+          <FormField label="New password" error={fieldErrors.newPassword} autoComplete="new-password"
             type="password"
             placeholder="New password"
             value={password}
@@ -83,7 +95,7 @@ const ResetPassword = () => {
             required
           />
 
-          <input
+          <FormField label="Confirm password" autoComplete="new-password"
             type="password"
             placeholder="Confirm password"
             value={confirmPassword}
@@ -92,13 +104,13 @@ const ResetPassword = () => {
             required
           />
 
-          {error && <p className="error">{error}</p>}
+          {error && <StatusMessage tone="error" className={css("error")}>{error}</StatusMessage>}
 
-          {success && <p className="success">{success}</p>}
+          {success && <StatusMessage tone="success" className={css("success")}>{success}</StatusMessage>}
 
-          <button type="submit" disabled={loading}>
+          <Button type="submit" disabled={loading}>
             {loading ? "Resetting..." : "Reset Password"}
-          </button>
+          </Button>
         </form>
 
         <p>

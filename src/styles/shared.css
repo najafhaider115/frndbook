@@ -1,0 +1,67 @@
+/* Compatibility selectors allow incremental adoption without rewriting forms. */
+.search-input,
+.message-composer textarea {
+  width: 100%;
+  border: 1px solid var(--color-control-border);
+
+}
+
+.friends-header,
+.notifications-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 25px;
+}
+
+.friends-header h1,
+.notifications-header h1 {
+  margin: 0 0 6px;
+}
+
+.friends-header p,
+.notifications-header p {
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
+.pagination,
+.notification-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+}
+
+.pagination button,
+.notification-pagination button {
+  min-height: 40px;
+  padding: 8px 14px;
+  border: 1px solid var(--color-control-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+}
+
+.pagination button:disabled,
+.notification-pagination button:disabled {
+  opacity: 0.5;
+}
+
+.friends-empty,
+.notifications-empty {
+  text-align: center;
+  border: 1px dashed var(--color-control-border);
+  border-radius: var(--radius-lg);
+}
+
+.friends-empty h2,
+.notifications-empty h2 {
+  margin: 0 0 8px;
+}
+
+.friends-empty p,
+.notifications-empty p {
+  margin: 0;
+  color: var(--color-text-secondary);
+}

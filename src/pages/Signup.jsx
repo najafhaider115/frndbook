@@ -1,7 +1,16 @@
+import { apiError } from "../utils/apiError";
+import { apiErrorMessage } from "../utils/apiError.js";
+import authStyles from "../styles/auth.module.css";
+import { bindStyles } from "../utils/bindStyles";
+import StatusMessage from "../components/ui/StatusMessage";
+import FormField from "../components/ui/FormField";
+import Button from "../components/ui/Button";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../auth/AuthContext";
+
+const css = bindStyles(authStyles);
 
 const Signup = () => {
   const navigate = useNavigate();
@@ -13,12 +22,14 @@ const Signup = () => {
   const [password, setPassword] = useState("");
 
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
 
     setError("");
+    setFieldErrors({});
     setLoading(true);
 
     try {
@@ -26,10 +37,11 @@ const Signup = () => {
 
       navigate(`/verify-email?email=${encodeURIComponent(email)}`);
     } catch (error) {
+      setFieldErrors(apiError(error).fieldErrors);
       console.error(error);
 
       setError(
-        error.response?.data?.message || "Unable to send verification code",
+        apiErrorMessage(error, "Unable to send verification code"),
       );
     } finally {
       setLoading(false);
@@ -37,14 +49,14 @@ const Signup = () => {
   };
 
   return (
-    <div className="auth-page">
-      <div className="auth-card">
+    <div className={css("auth-page")}>
+      <div className={css("auth-card")}>
         <h1>FrndBook</h1>
 
         <h2>Create Account</h2>
 
         <form onSubmit={handleSubmit}>
-          <input
+          <FormField label="Name" error={fieldErrors.name} autoComplete="name"
             type="text"
             placeholder="Name"
             value={name}
@@ -52,7 +64,7 @@ const Signup = () => {
             required
           />
 
-          <input
+          <FormField label="Email" error={fieldErrors.email} autoComplete="email"
             type="email"
             placeholder="Email"
             value={email}
@@ -60,7 +72,7 @@ const Signup = () => {
             required
           />
 
-          <input
+          <FormField label="Password" error={fieldErrors.password} autoComplete="new-password"
             type="password"
             placeholder="Password"
             value={password}
@@ -69,11 +81,11 @@ const Signup = () => {
             required
           />
 
-          {error && <p className="error">{error}</p>}
+          {error && <StatusMessage tone="error" className={css("error")}>{error}</StatusMessage>}
 
-          <button type="submit" disabled={loading}>
+          <Button type="submit" disabled={loading}>
             {loading ? "Sending code..." : "Create Account"}
-          </button>
+          </Button>
         </form>
 
         <p>

@@ -1,0 +1,122 @@
+/* ==================================================
+   RESET
+   ================================================== */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  width: 100%;
+  min-height: 100%;
+  overflow-x: hidden;
+}
+
+body {
+  margin: 0;
+
+  width: 100%;
+  min-height: 100vh;
+
+  font-family: Arial, Helvetica, sans-serif;
+
+  background: var(--color-bg);
+  color: var(--color-text);
+
+  line-height: 1.45;
+
+  overflow-x: hidden;
+
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+#root {
+  width: 100%;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+a {
+  color: inherit;
+}
+
+img {
+  max-width: 100%;
+}
+
+input,
+textarea {
+  min-width: 0;
+}
+
+button,
+a,
+input,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ==================================================
+   ACCESSIBILITY / FOCUS
+   ================================================== */
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+
+
+
+
+
+.loading-screen {
+min-height: 100vh;
+  min-height: 100dvh;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 20px;
+
+  font-size: 18px;
+  color: var(--color-text-secondary);
+
+  text-align: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+*,
+*::before,
+*::after {
+scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+}
+}
+
+/* A skip link becomes visible only for keyboard users. */
+.skip-link { position: fixed; top: 8px; left: 12px; transform: translateY(-180%); z-index: 1100; padding: 10px 16px; background: var(--color-primary); color: var(--color-on-primary); border-radius: var(--radius-md); }
+.skip-link:focus { transform: translateY(0); }
